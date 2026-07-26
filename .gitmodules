@@ -1,0 +1,6 @@
+[submodule "messenger-backend"]
+	path = messenger-backend
+	url = https://github.com/kowaldiv/messenger-backend
+[submodule "messanger-vite"]
+	path = messanger-vite
+	url = https://github.com/kowaldiv/messanger-vite

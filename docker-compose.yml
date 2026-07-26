@@ -1,0 +1,64 @@
+version: "3.8"
+
+services:
+  # ---------- БАЗА ДАННЫХ (PostgreSQL) ----------
+  db:
+    build:
+      context: ./postgres
+      dockerfile: Dockerfile
+    container_name: messenger-db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: messenger
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  # ---------- БЭКЕНД (Fastify + Prisma) ----------
+  backend:
+    build:
+      context: ./messenger-backend
+      dockerfile: Dockerfile
+      args:
+        DATABASE_URL: "postgresql://postgres:postgres@db:5432/messenger?schema=public"
+    container_name: messenger-backend
+    restart: always
+    env_file:
+      - ./messenger-backend/.env  # 👈 Загружаем все переменные из .env
+    environment:
+      # Переопределяем DATABASE_URL для Docker (заменяем localhost на db)
+      DATABASE_URL: "postgresql://postgres:postgres@db:5432/messenger?schema=public"
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    networks:
+      - app-network
+    command: sh -c "npx prisma db push --url 'postgresql://postgres:postgres@db:5432/messenger?schema=public' && npm start"
+
+  # ---------- ФРОНТЕНД (React + Vite + Nginx) ----------
+  frontend:
+    build:
+      context: ./messanger-vite
+      dockerfile: Dockerfile
+    container_name: messenger-frontend
+    restart: always
+    ports:
+      - "5173:80" # фронт доступен на localhost:5173
+    networks:
+      - app-network
+
+# ---------- ОБЩАЯ СЕТЬ (чтобы контейнеры видели друг друга по имени) ----------
+networks:
+  app-network:
+    driver: bridge
+
+# ---------- ТОМ ДЛЯ ДАННЫХ БД (сохраняется при перезапусках) ----------
+volumes:
+  postgres_data:
